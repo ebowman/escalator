@@ -6,18 +6,11 @@ import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import scala.concurrent.{Await, Future}
 import scala.util.{Success, Try}
 
-object EscalatorSpec {
-  implicit class FutureResult[T](val future: Future[T]) extends AnyVal {
-    import scala.concurrent.duration._
-    def toResult: T = Await.result(future, 30.seconds)
-  }
-}
-
 class EscalatorSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
 
-  import scala.concurrent.ExecutionContext.Implicits.global
-  import EscalatorSpec._
+  import Util._
 
+  import scala.concurrent.ExecutionContext.Implicits.global
   val client = new Escalator()
   val streamNames = (1 to 3) map (_ => s"EscalatorSpec_${util.Random.alphanumeric.take(10).mkString}")
 
@@ -91,7 +84,5 @@ class EscalatorSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
       val thirdCall: Record = client.getRecords(streamNames.head, shard, AfterSequenceNumber(secondRecord.getSequenceNumber), records.size).toResult.head.toResult.head
       thirdCall.getData.array().toSeq should equal(records(2).toSeq)
     }
-
-
   }
 }

@@ -182,7 +182,17 @@ class Escalator(config: Config = Config())(implicit ec: ExecutionContext) {
   def putRecord(streamName: String, data: ByteBuffer, partitionKey: String, sequenceNumber: Option[String] = None): Future[(String, String)] = Future {
     var request = new PutRecordRequest().withStreamName(streamName).withData(data).withPartitionKey(partitionKey)
     request = sequenceNumber.fold(request)(request.withSequenceNumberForOrdering)
-    val response = client.putRecord(request)
+    val response = blocking(client.putRecord(request))
+    (response.getShardId, response.getSequenceNumber)
+  }
+
+  def putRecordToShard(streamName: String, shard: Shard, data: Array[Byte]): Future[(String, String)] = Future {
+    val request = new PutRecordRequest()
+    request.setStreamName(streamName)
+    request.setPartitionKey(shard.getShardId)
+    request.setExplicitHashKey(shard.getHashKeyRange.getStartingHashKey)
+    request.setData(ByteBuffer.wrap(data))
+    val response = blocking(client.putRecord(request))
     (response.getShardId, response.getSequenceNumber)
   }
 
@@ -229,5 +239,21 @@ class Escalator(config: Config = Config())(implicit ec: ExecutionContext) {
     }
 
     firstRequest()
+  }
+
+  def splitShard(streamName: String, shardToSplit: String, startingHashKey: String): Future[Unit] = {
+    val request = new SplitShardRequest
+    request.setStreamName(streamName)
+    request.setShardToSplit(shardToSplit)
+    request.setNewStartingHashKey(startingHashKey)
+    Future(blocking(client.splitShard(request)))
+  }
+
+  def mergeShards(streamName: String, shardToMerge: String, adjacentShard: String): Future[Unit] = {
+    val request = new MergeShardsRequest()
+    request.setStreamName(streamName)
+    request.setShardToMerge(shardToMerge)
+    request.setAdjacentShardToMerge(adjacentShard)
+    Future(blocking(client.mergeShards(request)))
   }
 }
