@@ -14,20 +14,26 @@ class EscalatorSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
   val client = new Escalator()
   val streamNames = (1 to 3) map (_ => s"EscalatorSpec_${util.Random.alphanumeric.take(10).mkString}")
 
-  override def beforeAll() {
-    // create 3 streams, with 1, 2, & 3 shards each
-    Future.sequence(streamNames.zipWithIndex.map(ni => client.createStream(ni._1, ni._2 + 1))).toResult
-    var creating = true
-    while (creating) {
+  def blockUntilNoneMatch(status: String): Unit = {
+    var waiting = true
+    while (waiting) {
       val streams = Future.sequence(client.listStreams()).toResult.flatten
-      creating = streams.exists { stream =>
+      waiting = streams.exists { stream =>
         Try(client.describeStream(stream).toResult) match {
-          case Success((StreamDescription(_, _, "CREATING"), _, _)) => true
+          case Success((StreamDescription(_, _, `status`), _, _)) => true
           case _ => false
         }
       }
-      if (creating) Thread.sleep(1000)
+      if (waiting) Thread.sleep(1000)
     }
+
+  }
+
+  override def beforeAll() {
+    // create 3 streams, with 1, 2, & 3 shards each
+    blockUntilNoneMatch("DELETING")
+    Future.sequence(streamNames.zipWithIndex.map(ni => client.createStream(ni._1, ni._2 + 1))).toResult
+    blockUntilNoneMatch("CREATING")
   }
 
   override def afterAll() {

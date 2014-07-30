@@ -132,7 +132,7 @@ class Escalator(config: Config = Config())(implicit ec: ExecutionContext) {
                  shard: Shard,
                  shardIterType: ShardIterType,
                  limit: Int
-                 ): Future[Stream[Future[Seq[Record]]]] = {
+                  ): Future[Stream[Future[Seq[Record]]]] = {
 
     getShardIterator(streamName, shard, shardIterType) map { shardIterator =>
       val request = new GetRecordsRequest
