@@ -23,7 +23,7 @@ class Escalatee(config: Config = Config())(implicit ec: ExecutionContext) {
   }
 
   def deleteStream(streamName: String): Future[Unit] = Future {
-    client.deleteStream(streamName)
+    blocking(client.deleteStream(streamName))
   }
 
   def listStreams(limit: Int = 10): Enumerator[String] = {
